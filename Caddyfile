@@ -1,0 +1,24 @@
+# Shared edge. One site block per project.
+# Backends join the external Docker network "edge" and expose a unique network alias
+# (myapp-web, other-web, ...). Certificates (Let's Encrypt) are obtained automatically
+# as soon as the DNS A/AAAA record points at this server and ports 80/443 are open.
+
+(common) {
+	encode zstd gzip
+	# Worker APIs are never reachable from the internet.
+	@internal path /internal/*
+	respond @internal 404
+}
+
+app.example.com {
+	import common
+	reverse_proxy myapp-web:3000
+}
+
+# Streaming responses (server-sent events, long polling) need unbuffered flushing:
+stream.example.com {
+	import common
+	reverse_proxy stream-web:3000 {
+		flush_interval -1
+	}
+}
